@@ -12,9 +12,7 @@
  */
 
 #define LED_PIN 13
-#define BUTT_PIN 12
-
-
+ 
 Pushbutton button(ZUMO_BUTTON);
 ZumoBuzzer buzzer;
 ZumoMotors motors;
