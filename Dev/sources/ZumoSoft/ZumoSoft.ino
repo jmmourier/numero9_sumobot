@@ -1,4 +1,5 @@
 #include <ZumoMotors.h>
+#include <Pushbutton.h>
 
 /*
  * This example uses tùhe ZumoMotors library to drive each motor on the Zumo
@@ -12,6 +13,8 @@
 #define LED_PIN 13
 #define BUTT_PIN 12
 
+
+Pushbutton button(ZUMO_BUTTON);
 const int ROBOT_SPEED = 200;
 
 ZumoMotors motors;
@@ -20,23 +23,14 @@ unsigned int reading;
 void setup()
 {
   pinMode(LED_PIN, OUTPUT);
-  pinMode(BUTT_PIN, INPUT);
   
   // serial for the Ultrasound
   Serial.begin(9600);
+  while(!button.isPressed());
 }
 
 void loop()
 {
-
-  int userPushButton = 0;
-  while(1)
-  {
-    delay(10);
-    userPushButton = digitalRead(BUTT_PIN);
-    Serial.println(userPushButton);
-  }
-
 
   // run left motor forward
   
