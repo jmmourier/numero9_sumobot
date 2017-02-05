@@ -1,5 +1,6 @@
 #include <ZumoMotors.h>
 #include <Pushbutton.h>
+#include <ZumoBuzzer.h>
 
 /*
  * This example uses tùhe ZumoMotors library to drive each motor on the Zumo
@@ -15,10 +16,10 @@
 
 
 Pushbutton button(ZUMO_BUTTON);
-const int ROBOT_SPEED = 200;
-
+ZumoBuzzer buzzer;
 ZumoMotors motors;
-unsigned int reading;
+
+const int ROBOT_SPEED = 200;
 
 void setup()
 {
