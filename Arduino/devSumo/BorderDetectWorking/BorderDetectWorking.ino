@@ -7,14 +7,14 @@
 #define LED 13
  
 // this might need to be tuned for different lighting conditions, surfaces, etc.
-#define QTR_THRESHOLD  140 // microseconds
+#define QTR_THRESHOLD  100 // microseconds
   
 // these might need to be tuned for different motor types
 #define REVERSE_SPEED     200 // 0 is stopped, 400 is full speed
-#define TURN_SPEED        200
-#define FORWARD_SPEED     200
+#define TURN_SPEED        400
+#define FORWARD_SPEED     400
 #define REVERSE_DURATION  200 // ms
-#define TURN_DURATION     300 // ms
+#define TURN_DURATION     800 // ms
  
 ZumoBuzzer buzzer;
 ZumoMotors motors;
