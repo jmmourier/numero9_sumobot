@@ -19,6 +19,8 @@ ZumoMotors motors;
 
 const int ROBOT_SPEED = 200;
 
+int reading;
+
 void setup()
 {
   pinMode(LED_PIN, OUTPUT);
