@@ -1,0 +1,9 @@
+Demarage du robot : 
+- verification du serial avec l'ultrason
+- verification du positionnement IMU (si le robot est a plat)
+Bip de demarage Valide / non valide
+- attente du bouton
+
+Appui sur le boutton :
+- compte a rebours sonnors 5 secondes
+
