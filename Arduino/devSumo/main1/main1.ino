@@ -2,24 +2,24 @@
 define of the pins
 0 Serial RX
 1 Serial TX
-2
+2 
 3
 4
 5
-6
-7
-8
-9
-10
+6 BUZZER
+7 right motor direction control line
+8 left motor direction control line
+9 right motor PWM control line
+10 left motor PWM control line
 11
 12 ZUMO_BUTTON
 13 Led on the side of the board
 A0
-A1
+A1 Battery pin
 A2
 A3
-A4
-A5
+A4 I2C SDA
+A5 I2C SCL
 */
 
 // TODO 
@@ -34,9 +34,12 @@ A5
 #include <QTRSensors.h>
 #include <ZumoReflectanceSensorArray.h>
 
-
-// #define ZUMO_BUTTON 12 // already defined elsewhere
+// #define BUZZER 6
+// #define ZUMO_BUTTON 12
 #define LED 13
+#define BATTERY A1
+#define I2C_SDA A4
+#define I2C_SCL A5
 #define US_SENSOR_ADRESS 0x00
 
 // errors
