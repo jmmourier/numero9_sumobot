@@ -1,0 +1,9 @@
+srf02ser	KEYWORD1
+
+init				KEYWORD2
+checkCommunication	KEYWORD2
+process				KEYWORD2
+isPressed			KEYWORD2
+hasAnErrorFlaged	KEYWORD2
+getLastResult		KEYWORD2
+
