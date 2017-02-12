@@ -33,6 +33,7 @@ A5 I2C SCL
 #include <ZumoBuzzer.h>
 #include <QTRSensors.h>
 #include <ZumoReflectanceSensorArray.h>
+#include <srf02ser.h>
 
 // #define BUZZER 6
 // #define ZUMO_BUTTON 12
@@ -46,31 +47,39 @@ A5 I2C SCL
 #define ERROR_SERIAL 0b10
 
 //Ultrasound defines
-#define US_TIMEOUT_TEST 70
-#define US_CMD_GET_SOFTWARE_VERSION 0x5D
-#define US_CMD_REAL_RANGE 0x54
-#define US_CMD_GET_RANGE 0x5E
 #define US_SENSOR_ADRESS 0x00
 #define US_THRESHOLD_DETECTION 30
 
+// ground sensor
+#define NUM_SENSORS 6
+#define QTR_THRESHOLD  100 // microseconds
+#define REVERSE_SPEED     200 // 0 is stopped, 400 is full speed
+#define TURN_SPEED        400
+#define FORWARD_SPEED     400
+#define REVERSE_DURATION  200 // ms
+#define TURN_DURATION     800 // ms
+
 // battery
-#define BATT_MIN_THRESHOLD 1 // TODO : set a real thresohl
+#define BATT_MIN_THRESHOLD 550 // 550*1.5*5/1024 = 4V minimum for the batteries
 
 // Motors and moves
 #define ROBOT_SPEED 200
-
-// CONST
+#define TIME_TO_FORGET 1000 // avoid losing target all the time
 
 ZumoBuzzer buzzer;
 ZumoMotors motors;
 Pushbutton button(ZUMO_BUTTON); // pushbutton on pin 12
+srf02ser mUSSensor(US_SENSOR_ADRESS);
+ZumoReflectanceSensorArray groundSensor(QTR_NO_EMITTER_PIN);
 
 bool isSerialInitialized = false;
 byte isAnError = 0x0;
 bool batteryLow = false;
-unsigned long USTimeLastRequest = 0;
-bool isUSWorking = false;
 bool isAnEnemyInFrontOfMe = false;
+bool presence = false;
+bool presence_memory = false;
+unsigned long lastSeen = 0;
+unsigned int sensor_values[NUM_SENSORS];
 
 // ---- MARIO
 #define MELODY_LENGTH 95
@@ -193,58 +202,6 @@ void waitForButtonAndCountDown(int bipToDo = 3)
   delay(1000);
 }
 
-// return true if the ultrasounf answer any byte
-bool isUltrasoundResponding()
-{
-	bool result = false;
-	// this function should not be called if serial is not initialised
-	if(!isSerialInitialized)
-	{
-		isAnError = isAnError|ERROR_SERIAL;
-		return false;
-	}
-	
-	sendCmdToUS(US_SENSOR_ADRESS,US_CMD_GET_SOFTWARE_VERSION);
-	unsigned long timeAsked = millis(); // for the timeout
-	while(millis()-timeAsked < US_TIMEOUT_TEST)
-	{
-		if(Serial.available()>0)
-		{
-			byte version = Serial.read();
-			isUSWorking = false;
-			return true;
-		}
-	}
-	isAnError = isAnError|ERROR_US;
-	return false;
-}
-
-// general function to send data to the ultrasound
-void sendCmdToUS(unsigned char address,unsigned char cmd)
-{
-  Serial.write(address);//set the address of SRF02(factory default is 0)
-  delayMicroseconds(100);//serial data is fixed at 9600,N,8,2,so we need some time to creat the sencond stop bit
-  Serial.write(cmd);//send the command to SRF02
-  delayMicroseconds(100);//serial data is fixed at 9600,N,8,2,so we need some time to creat the sencond stop bit
-  USTimeLastRequest = millis();
-  isUSWorking = true;
-}
-
-int read2ByteUS()
-{
-	int result = -1;
-	if(Serial.available()>=2)
-	{
-		result = Serial.read()<<8;
-		result |= Serial.read();
-		isUSWorking = false;
-		return result;
-	}
-	else
-	{
-		return result;
-	}
-}
 
 void checkAndTuneError()
 {
@@ -264,7 +221,14 @@ void checkBatterieStatus()
 {
 	int batteryTension = analogRead(PIN_BATTERY);
 	if(batteryTension < BATT_MIN_THRESHOLD)
+	{
 		batteryLow = true;
+		buzzer.playNote(NOTE_C(2), 100, 10);
+	}
+	else
+	{
+		batteryLow = false;
+	}
 }
 
 void setup() {
@@ -272,75 +236,90 @@ void setup() {
 		Serial.begin(9600); 
 	delay(50);
 	isSerialInitialized = true;
+
+	mUSSensor.init();
 	// this will be use for debug and for the ultrasound sensor
 	debugln("start of the robot");
-	isUltrasoundResponding();
+
+	if(!mUSSensor.checkCommunication())
+		isAnError = isAnError|ERROR_US;
 	checkAndTuneError();
 	waitForButtonAndCountDown();
 }
 
-void loop() {
-
-	// playing Mario
+void loop() 
+{
+	// process functions
+	mUSSensor.process();
+	//checkBatterieStatus();
 	//playMusic();
 
+
+
+
 	// rest of the code
-	// if(bordureIsDetected)
-	// 		Manoeuvre d'esquive
-	// else 
-	// 		Manoeuvre d'attaque
 
-	if(checkForEnemy())
+
+	groundSensor.read(sensor_values);
+
+	if (sensor_values[0] < QTR_THRESHOLD)
 	{
-		digitalWrite(PIN_LED,HIGH);
-	    motors.setLeftSpeed(-ROBOT_SPEED);
-	    motors.setRightSpeed(-ROBOT_SPEED);
+		// if leftmost sensor detects line, reverse and turn to the right
+		motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+		delay(REVERSE_DURATION);
+		motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+		delay(TURN_DURATION);
+		motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+		// TODO : get the delais out !!!
+	}
+	else if (sensor_values[5] < QTR_THRESHOLD)
+	{
+		// if rightmost sensor detects line, reverse and turn to the left
+		motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+		delay(REVERSE_DURATION);
+		motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
+		delay(TURN_DURATION);
+		motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+		// TODO : get the delais out !!!
 	}
 	else
 	{
-		digitalWrite(PIN_LED,LOW);
-	    motors.setLeftSpeed(-ROBOT_SPEED);
-	    motors.setRightSpeed(ROBOT_SPEED);
-	}
+	    // otherwise, do the job
+	  
+		int distance = mUSSensor.getLastResult();
+		if(distance < 50)
+		{
+			presence = true;
+			lastSeen = millis();
+		}
+		else
+		{
+			if(millis()-lastSeen > TIME_TO_FORGET)
+				presence = false;
+		}
 
-	if(isUSWorking)
-		digitalWrite(PIN_LED,HIGH);
-	else
-		digitalWrite(PIN_LED,LOW);
-}
 
-bool checkForEnemy()
-{
-/*
-	send command
-	wait 70 ms
-	send seconde command
-	wait serial available
-	read byte
-	get distante
-	set enemy presence
-*/
-
-	if(isUSWorking)
-	{
-		int resultUS = read2ByteUS();
-		if(resultUS == -1)
-			return isAnEnemyInFrontOfMe;
-		else 
+		//Serial.println(presence);
+		if(presence_memory != presence)
+		{
+			//if(checkForEnemy())
+			if(presence)
 			{
-				if(resultUS < US_THRESHOLD_DETECTION)
-					isAnEnemyInFrontOfMe = true;
-				else
-					isAnEnemyInFrontOfMe = false;
+				digitalWrite(PIN_LED,HIGH);
+			    motors.setLeftSpeed(-ROBOT_SPEED);
+			    motors.setRightSpeed(-ROBOT_SPEED);
 			}
+			else
+			{
+				//digitalWrite(PIN_LED,LOW);
+			    motors.setLeftSpeed(-ROBOT_SPEED);
+			    motors.setRightSpeed(ROBOT_SPEED);
+			}
+		}
+
+		presence_memory = presence;
 	}
-	else
-	{
-		sendCmdToUS(US_SENSOR_ADRESS,US_CMD_REAL_RANGE);
-		debugln("a");
-	}
-	return isAnEnemyInFrontOfMe;
-}	
+}
 
 void playMusic()
 {
