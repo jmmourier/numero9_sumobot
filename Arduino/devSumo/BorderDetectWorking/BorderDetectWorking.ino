@@ -7,7 +7,7 @@
 #define LED 13
  
 // this might need to be tuned for different lighting conditions, surfaces, etc.
-#define QTR_THRESHOLD  100 // microseconds
+#define QTR_THRESHOLD  500 // microseconds
   
 // these might need to be tuned for different motor types
 #define REVERSE_SPEED     200 // 0 is stopped, 400 is full speed

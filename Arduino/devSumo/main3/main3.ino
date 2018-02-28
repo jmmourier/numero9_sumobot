@@ -2,22 +2,22 @@
 define of the pins
 0 Serial RX
 1 Serial TX
-2 
-3
-4
-5
-6 BUZZER
+2 led on array sensor
+3 BUZZER
+4 array sensor
+5 array sensor
+6 
 7 right motor direction control line
 8 left motor direction control line
 9 right motor PWM control line
 10 left motor PWM control line
-11
+11 array sensor
 12 ZUMO_BUTTON
 13 Led on the side of the board
-A0
+A0 array sensor
 A1 Battery pin
-A2
-A3
+A2 array sensor
+A3 array sensor
 A4 I2C SDA
 A5 I2C SCL
 */
@@ -52,18 +52,18 @@ A5 I2C SCL
 
 // ground sensor
 #define NUM_SENSORS 6
-#define QTR_THRESHOLD  100 // microseconds
+#define QTR_THRESHOLD  500 // microseconds
 #define REVERSE_SPEED     200 // 0 is stopped, 400 is full speed
 #define TURN_SPEED        400
 #define FORWARD_SPEED     400
 #define REVERSE_DURATION  200 // ms
-#define TURN_DURATION     800 // ms
+#define TURN_DURATION     400 // ms
 
 // battery
 #define BATT_MIN_THRESHOLD 550 // 550*1.5*5/1024 = 4V minimum for the batteries
 
 // Motors and moves
-#define ROBOT_SPEED 200
+#define ROBOT_SPEED 400
 #define TIME_TO_FORGET 1000 // avoid losing target all the time
 
 ZumoBuzzer buzzer;
@@ -81,6 +81,7 @@ bool presence = false;
 bool presence_memory = false;
 unsigned long lastSeen = 0;
 unsigned int sensor_values[NUM_SENSORS];
+bool shouldTurnLeft = false;
 
 // ---- MARIO
 #define MELODY_LENGTH 95
@@ -253,6 +254,11 @@ void setup() {
 	// fast as possible).  To use continuous timed mode
 	// instead, provide a desired inter-measurement period in
 	// ms (e.g. sensor.startContinuous(100)).
+
+  Serial.println("robot ready to fight");
+
+  digitalWrite(PIN_LED,HIGH);
+
 	sensor1.startContinuous();
 	sensor2.startContinuous();
 
@@ -263,7 +269,7 @@ void setup() {
 void loop() 
 {
 	// process functions
-	//checkBatterieStatus();
+	checkBatterieStatus();
 	playMusic();
 
 	int leftValue = sensor1.readRangeContinuousMillimeters();
@@ -281,30 +287,33 @@ void loop()
 	debugln(" ");
 
 
-	if(leftValue < 200 || rightValue <200)
+	if(leftValue < 580 || rightValue <580)
 	{
-		if(diff >= -10 && diff <= 10)
+		if(diff >= -15 && diff <= 15)
 		{
 			// on va tout droit
 			motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
 
 		}
-		else if(diff > 10)
+		else if(diff > 15)
 		{
 			// on tourne a droite
 
-			motors.setSpeeds(-FORWARD_SPEED,-FORWARD_SPEED/2);
+			motors.setSpeeds(-FORWARD_SPEED,0);
 		}
 		else 
 		{
 			// on tourne a gauche
 
-			motors.setSpeeds(-FORWARD_SPEED/2,-FORWARD_SPEED);
+			motors.setSpeeds(0,-FORWARD_SPEED);
 		}
 	}
 	else // on a pas d'obstacle
 	{
-		motors.setSpeeds(FORWARD_SPEED, -FORWARD_SPEED);
+    if(!shouldTurnLeft)
+    		motors.setSpeeds(FORWARD_SPEED, -FORWARD_SPEED);
+    else
+        motors.setSpeeds(-FORWARD_SPEED, FORWARD_SPEED);
 	}
 
 	/*
@@ -341,29 +350,39 @@ void loop()
 
 	groundSensor.read(sensor_values);
 
-	if (sensor_values[0] < QTR_THRESHOLD)
+	if (sensor_values[0] < QTR_THRESHOLD && sensor_values[1] < QTR_THRESHOLD)
 	{
 		// if leftmost sensor detects line, reverse and turn to the right
-		motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
-		delay(REVERSE_DURATION);
-		motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
-		delay(TURN_DURATION);
-		motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
-		// TODO : get the delais out !!!
-	}
-	else if (sensor_values[5] < QTR_THRESHOLD)
-	{
-		// if rightmost sensor detects line, reverse and turn to the left
-		motors.setSpeeds(-REVERSE_SPEED, -REVERSE_SPEED);
+		motors.setSpeeds(REVERSE_SPEED, REVERSE_SPEED);
 		delay(REVERSE_DURATION);
 		motors.setSpeeds(-TURN_SPEED, TURN_SPEED);
 		delay(TURN_DURATION);
-		motors.setSpeeds(FORWARD_SPEED, FORWARD_SPEED);
+		motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
+   shouldTurnLeft = true;
 		// TODO : get the delais out !!!
 	}
-	else
+	else if (sensor_values[5] < QTR_THRESHOLD && sensor_values[4] < QTR_THRESHOLD)
 	{
-	    // otherwise, do the job
+		// if rightmost sensor detects line, reverse and turn to the left
+		motors.setSpeeds(-REVERSE_SPEED, REVERSE_SPEED);
+		delay(REVERSE_DURATION);
+		motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+		delay(TURN_DURATION);
+		motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
+   shouldTurnLeft = false;
+		// TODO : get the delais out !!!
+	}
+	else if (sensor_values[1] < QTR_THRESHOLD || 
+	sensor_values[2] < QTR_THRESHOLD || 
+	sensor_values[3] < QTR_THRESHOLD || 
+	sensor_values[4] < QTR_THRESHOLD)
+	{
+	  motors.setSpeeds(-REVERSE_SPEED, REVERSE_SPEED);
+    delay(REVERSE_DURATION);
+    delay(REVERSE_DURATION);
+    motors.setSpeeds(TURN_SPEED, -TURN_SPEED);
+    delay(TURN_DURATION);
+    motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
 	  
 	}
 }
