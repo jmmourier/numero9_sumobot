@@ -75,6 +75,8 @@ A5 I2C SCL
 #define STOPING         2
 #define MOVING_UNTIL_WALL 3  
 #define BATTERY_LOW     4
+#define MOVE_UNTIL_LINE 5
+#define UTURN 6
 
 
 // class definitions
@@ -85,11 +87,16 @@ ZumoReflectanceSensorArray groundSensor(QTR_NO_EMITTER_PIN);
 VL53L0X TOF1;
 VL53L0X TOF2;
 
+
 // variables
 bool batteryLow = false; 
 unsigned int sensor_values[NUM_SENSORS];
 int state; // for state machine in the loop
-  
+int previousState;
+unsigned long beginState;
+boolean whiteBandDetected;
+boolean whiteBandDetectedLeft;
+boolean whiteBandDetectedRight;
 
 // when the button is pushed the robot makes some sounds and go
 // blocking function 
@@ -138,6 +145,7 @@ void initTOFSensors()
   TOF2.startContinuous();
 }
 
+// TODO change to make it with a global variable until making it clean as a class
 bool obstacleInFront()
 {
   // return true if obstacle from the TOF sensors
@@ -157,6 +165,28 @@ bool obstacleInFront()
   return true;
 }
 
+void checkGroundSensors()
+{
+	whiteBandDetectedLeft = false;
+  	whiteBandDetectedRight = false;
+  	whiteBandDetected = false;
+
+	groundSensor.read(sensor_values);
+
+	if (sensor_values[0] < QTR_THRESHOLD && sensor_values[1] < QTR_THRESHOLD)
+	{
+		whiteBandDetectedLeft = true;
+	}
+	if (sensor_values[5] < QTR_THRESHOLD && sensor_values[4] < QTR_THRESHOLD)
+	{
+		whiteBandDetectedRight = true;
+	}
+	if(whiteBandDetectedRight || whiteBandDetectedLeft)
+	{
+		whiteBandDetected = true;
+	}
+}
+
 void setup() {
 
   // init communications
@@ -167,6 +197,12 @@ void setup() {
 
   // init variables
   state = 0;
+  previousState = 0;
+  whiteBandDetected = false;
+  whiteBandDetectedLeft = false;
+  whiteBandDetectedRight = false;
+  batteryLow = false;
+  beginState = 0;
 
   // init modules
     // init Tof sensors
@@ -187,12 +223,12 @@ void setup() {
 
 void loop() 
 { 
-
+	
   // looping on state machine
   switch(state)
   {
   case INITIALISATION :
-    state = MOVING_UNTIL_WALL;
+    state = MOVE_UNTIL_LINE;
     break;
     
   case MOVING_FORWARD :
@@ -212,14 +248,13 @@ void loop()
     {
       motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);  
     }
-    
     break;
     
   case BATTERY_LOW :
     if(batteryLow == false )
     {
       // back to the initialisation mode
-      state = INITIALISATION;
+      //state = INITIALISATION;
     }
     else
     {
@@ -228,8 +263,26 @@ void loop()
       delay(200);
     }
     break;
-  
+
+  case MOVE_UNTIL_LINE:
+    motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
+    if(whiteBandDetected)
+    	state = UTURN;
+    break;
+
+  case UTURN: 
+  	motors.setSpeeds(FORWARD_SPEED, -FORWARD_SPEED);
+  	if(millis() - beginState > 1000)
+  		state = MOVE_UNTIL_LINE;
+  	break;
   }
+
+  if(state != previousState)
+  {
+  	beginState = millis();
+  	previousState = state;
+  }
+
 
 // reading orders
   if(Serial.available()>0)
@@ -264,6 +317,9 @@ void loop()
   // reading battery
   checkBatterieStatus();
 
+  // update ground sensor
+  checkGroundSensors();
+
   // reading button
   if(button.isPressed())
   {
@@ -278,6 +334,7 @@ void loop()
     delay(200); // antibounce
   }
 }
+
 
 
 
