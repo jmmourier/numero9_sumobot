@@ -76,15 +76,11 @@ A5 I2C SCL
 #define MOVING_UNTIL_WALL 3  
 #define BATTERY_LOW     4
 #define MOVE_UNTIL_LINE 5
-#define UTURN       6
+#define UTURN 			6
 #define MOVE_UNTIL_WALL_OR_LINE 7
-#define MAIN      8
-#define UTURN_RIGHT   9
-#define UTURN_LEFT    10
-#define SEARCH_ENEMY 11
-#define AJUST_ENEMY 12
-#define ATTACK 13
-#define FINISH_UTURN 14
+#define MAIN 			8
+#define UTURN_RIGHT 	9
+#define UTURN_LEFT 		10
 
 // class definitions
 ZumoBuzzer buzzer;
@@ -104,13 +100,6 @@ unsigned long beginState;
 boolean whiteBandDetected;
 boolean whiteBandDetectedLeft;
 boolean whiteBandDetectedRight;
-int leftDistance;
-int rightDistance;
-int leftDistanceFiltred;
-int rightDistanceFiltred;
-int leftDistanceLast;
-int rightDistanceLast;
-int diffDistance;
 
 // when the button is pushed the robot makes some sounds and go
 // blocking function 
@@ -162,88 +151,52 @@ void initTOFSensors()
 // TODO change to make it with a global variable until making it clean as a class
 bool obstacleInFront()
 {
-
-  if(leftDistance > 140 && rightDistance > 140)
+  // return true if obstacle from the TOF sensors
+  int leftValue = TOF1.readRangeContinuousMillimeters();
+  int rightValue = TOF2.readRangeContinuousMillimeters();
+  
+  Serial.print(leftValue);
+  Serial.print("   ");
+  Serial.print(rightValue);
+  Serial.print("   diff ");
+  Serial.println(leftValue - rightValue);
+  
+  if(leftValue > 140 && rightValue > 140)
   {
     return false;
   }
   return true;
-/*
-  Serial.print(leftDistance);
-  Serial.print("   ");
-  Serial.print(rightDistance);
-  Serial.print("   diff ");
-  Serial.println(leftDistance - rightDistance);
-*/
-}
-
-void checkTOFDistance()
-{
-
-int leftDistanceRead = TOF1.readRangeContinuousMillimeters();
-int RightDistanceRead = TOF1.readRangeContinuousMillimeters();
-
-  if(abs(leftDistanceRead - leftDistanceLast) > 300)
-    leftDistance = leftDistanceLast;
-  else
-    leftDistance = leftDistanceRead;
-
-  if(abs(RightDistanceRead - rightDistanceLast) > 300)
-    rightDistance = rightDistanceLast;
-  else
-    rightDistance = RightDistanceRead;
-
-
-
-  leftDistanceLast = leftDistanceRead;
-  rightDistanceLast = RightDistanceRead;
-
-/*
- leftDistance = TOF1.readRangeContinuousMillimeters();
- rightDistance = TOF1.readRangeContinuousMillimeters();
-*/
-
-  Serial.print(leftDistance);
-  Serial.print("   ");
-  Serial.print(rightDistance);
-  Serial.print("   diff ");
-  Serial.println(leftDistance - rightDistance);
-
-  leftDistanceFiltred = leftDistanceFiltred*0.5 + leftDistance*0.5;
-  rightDistanceFiltred = rightDistanceFiltred*0.5 + rightDistance*0.5;
-
-  diffDistance = abs(leftDistance - rightDistance);
 }
 
 void checkGroundSensors(char nbSensor = 1)
 {
-  if(nbSensor < 1) nbSensor = 1;
-  if(nbSensor > 3) nbSensor = 3;
+	if(nbSensor < 1) nbSensor = 1;
+	if(nbSensor > 3) nbSensor = 3;
 
-  whiteBandDetectedLeft = false;
-    whiteBandDetectedRight = false;
-    whiteBandDetected = false;
+	whiteBandDetectedLeft = false;
+  	whiteBandDetectedRight = false;
+  	whiteBandDetected = false;
 
-  groundSensor.read(sensor_values); // update values 
+	groundSensor.read(sensor_values); // update values 
   
 
-  // if sensor 0 and (sensor 1 ou vrai si only sensor 0) 
-  if (sensor_values[0] < QTR_THRESHOLD 
-    && (sensor_values[1] < QTR_THRESHOLD || !nbSensor > 1)
-    && (sensor_values[2] < QTR_THRESHOLD || !nbSensor > 2))
-  {
-    whiteBandDetectedLeft = true;
-  }
-  if (sensor_values[5] < QTR_THRESHOLD 
-    && (sensor_values[4] < QTR_THRESHOLD || !nbSensor > 1)
-    && (sensor_values[3] < QTR_THRESHOLD || !nbSensor > 2))
-  {
-    whiteBandDetectedRight = true;
-  }
-  if(whiteBandDetectedRight || whiteBandDetectedLeft)
-  {
-    whiteBandDetected = true;
-  }
+	// if sensor 0 and (sensor 1 ou vrai si only sensor 0) 
+	if (sensor_values[0] < QTR_THRESHOLD 
+		&& (sensor_values[1] < QTR_THRESHOLD || !nbSensor > 1)
+		&& (sensor_values[2] < QTR_THRESHOLD || !nbSensor > 2))
+	{
+		whiteBandDetectedLeft = true;
+	}
+	if (sensor_values[5] < QTR_THRESHOLD 
+		&& (sensor_values[4] < QTR_THRESHOLD || !nbSensor > 1)
+		&& (sensor_values[3] < QTR_THRESHOLD || !nbSensor > 2))
+	{
+		whiteBandDetectedRight = true;
+	}
+	if(whiteBandDetectedRight || whiteBandDetectedLeft)
+	{
+		whiteBandDetected = true;
+	}
 
 /*
 
@@ -284,13 +237,6 @@ void setup() {
   batteryLow = false;
   beginState = 0;
 
-  leftDistance = 0;
-  rightDistance = 0;
-  diffDistance = 0;
-  leftDistanceFiltred = 1000;
-  rightDistanceFiltred = 1000;
-  leftDistanceLast = 0;
-  rightDistanceLast = 0;
   // init modules
     // init Tof sensors
   initTOFSensors();
@@ -301,17 +247,16 @@ void setup() {
   buzzer.playNote(NOTE_G(6), 70, 15);
   delay(100);
   buzzer.playNote(NOTE_G(6), 70, 15);
-  delay(200);
+  delay(1000);
     
-  Serial.println("ready");
   // init done, ready for starting 
-  waitForButtonAndCountDown();
+	waitForButtonAndCountDown();
   
 }
 
 void loop() 
 { 
-  
+	
   // looping on state machine
   switch(state)
   {
@@ -319,10 +264,9 @@ void loop()
     state = MAIN;
     break;
   case MAIN:
-    state = SEARCH_ENEMY; 
-    break;  
-
-
+	 state = MOVE_UNTIL_WALL_OR_LINE;	
+  	break;
+    
   case STOPING :
     motors.setSpeeds(0, 0);  
     // problem, we don't get out of it !!! 
@@ -346,30 +290,25 @@ void loop()
   case MOVE_UNTIL_LINE:
     motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
     if(whiteBandDetected)
-      state = UTURN;
+    	state = UTURN;
     break;
 
 
   case UTURN: 
-    motors.setSpeeds(FORWARD_SPEED, -FORWARD_SPEED);
-    if(millis() - beginState > 1000)
-      state = FINISH_UTURN;
-    break;
+  	motors.setSpeeds(FORWARD_SPEED, -FORWARD_SPEED);
+  	if(millis() - beginState > 1000)
+  		state = MAIN;
+  	break;
   case UTURN_RIGHT: 
-    motors.setSpeeds(-FORWARD_SPEED, FORWARD_SPEED);
-    if(millis() - beginState > 1000)
-      state = FINISH_UTURN;
-    break;
+  	motors.setSpeeds(-FORWARD_SPEED, FORWARD_SPEED);
+  	if(millis() - beginState > 1000)
+  		state = MAIN;
+  	break;
   case UTURN_LEFT: 
-    motors.setSpeeds(FORWARD_SPEED, -FORWARD_SPEED);
-    if(millis() - beginState > 1000)
-      state = FINISH_UTURN;
-    break;
-  case FINISH_UTURN:
-    motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
-    if(millis() - beginState > 500)
-      state = MAIN;
-    break;
+  	motors.setSpeeds(FORWARD_SPEED, -FORWARD_SPEED);
+  	if(millis() - beginState > 1000)
+  		state = MAIN;
+  	break;
     
   case MOVING_FORWARD :
     motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
@@ -381,82 +320,32 @@ void loop()
       motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);  
     break;
   case MOVE_UNTIL_WALL_OR_LINE:
-    if(obstacleInFront())
-      {
-        motors.setSpeeds(0, 0);  
-      }
-      else
-      {
-        if(whiteBandDetected)
-        {
-          if(whiteBandDetectedLeft)
-            state = UTURN_RIGHT;
-          else
-            state = UTURN_LEFT;
-        }
-        else
-        {
-          motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED); 
-        }
-         
-      }
-    break;
-
-  case SEARCH_ENEMY:
-    motors.setSpeeds(-FORWARD_SPEED, FORWARD_SPEED);
-    if(leftDistance < 400 || rightDistance < 400)
+	if(obstacleInFront())
     {
-      Serial.println("EnemyDetected");
-      state = AJUST_ENEMY;
-    }
-    break;
-  case AJUST_ENEMY:
-    if(leftDistance > 400 && rightDistance > 400) state = SEARCH_ENEMY;
-    if(abs(leftDistance - rightDistance) < 40 && (leftDistance < 400 || rightDistance < 400)) state = ATTACK;
-
-    if(leftDistance < rightDistance + 50)
-    {
-      // turnleft
-      motors.setSpeeds(FORWARD_SPEED/4, -FORWARD_SPEED/4);
-    }
-    else if(rightDistance > leftDistance + 50)
-    { 
-      // turnRight
-      motors.setSpeeds(-FORWARD_SPEED/4, FORWARD_SPEED/4);
-    }
-    break;
-
-  case ATTACK:
-
-    if(whiteBandDetected)
-    {
-      if(whiteBandDetectedLeft)
-        state = UTURN_RIGHT;
-      else
-        state = UTURN_LEFT;
+      motors.setSpeeds(0, 0);  
     }
     else
     {
-      if(abs(diffDistance) < 50)
-        motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED);
-      else
-        state = AJUST_ENEMY;
+    	if(whiteBandDetected)
+    	{
+    		if(whiteBandDetectedLeft)
+    			state = UTURN_RIGHT;
+    		else
+    			state = UTURN_LEFT;
+    	}
+    	else
+    	{
+    		motors.setSpeeds(-FORWARD_SPEED, -FORWARD_SPEED); 
+    	}
+       
     }
-    break;
-
-  default:
-    state = MAIN;
-    break;
+  	break;
   }
-
-  Serial.print("state   ");
-  Serial.print(state);
-  Serial.print("   ");
 
   if(state != previousState)
   {
-    beginState = millis();
-    previousState = state;
+  	beginState = millis();
+  	previousState = state;
   }
 
 
@@ -469,7 +358,7 @@ void loop()
       case 'A':
         buzzer.playNote(NOTE_G(3), 200, 15);
         delay(200);
-        state = MAIN;
+        state = MOVING_UNTIL_WALL;
         break;
       case 'B':
         buzzer.playNote(NOTE_G(4), 200, 15);
@@ -495,9 +384,6 @@ void loop()
 
   // update ground sensor
   checkGroundSensors();
-
-  // update distance sensor
-  checkTOFDistance();
 
   // reading button
   if(button.isPressed())
